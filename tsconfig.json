@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "lib": [
+      "ESNext"
+    ],
+    "paths": {
+      "@auth-management/*": ["./src/auth-management/*"],
+      "@shared/*": ["./src/shared/*"],
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
+    "types": [
+        "./worker-configuration.d.ts", "@types/node"
+    ]
+  },
+}

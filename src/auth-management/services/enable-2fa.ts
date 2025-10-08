@@ -4,7 +4,7 @@ import { authenticator } from "otplib";
 /* Shared module imports */
 import { getCurrentISOString } from "@shared/utils";
 import { validatePayload } from "@shared/utils/validation";
-import { POS_DB_GLOBAL, USER_CONTEXT_KEY } from "@shared/constants";
+import { USER_CONTEXT_KEY } from "@shared/constants";
 import type { AuthenticatedContext } from "@shared/middleware";
 
 /* Auth management module imports */
@@ -38,7 +38,7 @@ export const enable2FA = async (c: AuthenticatedContext) => {
     const { code } = validationResult.data;
 
     /* Get user details */
-    const userDetails = await POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
+    const userDetails = await c.env.POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
       .bind(authenticatedUser.id)
       .first<UserWithRole>();
 
@@ -62,7 +62,7 @@ export const enable2FA = async (c: AuthenticatedContext) => {
     }
 
     /* Get 2FA configuration */
-    const twoFactorRecord = await POS_DB_GLOBAL.prepare(GET_USER_2FA_SECRET_QUERY)
+    const twoFactorRecord = await c.env.POS_DB_GLOBAL.prepare(GET_USER_2FA_SECRET_QUERY)
       .bind(authenticatedUser.id)
       .first<TwoFactorAuthData>();
 
@@ -97,7 +97,7 @@ export const enable2FA = async (c: AuthenticatedContext) => {
     }
 
     /* Enable 2FA flag in users table */
-    const enableResult = await POS_DB_GLOBAL.prepare(ENABLE_2FA_QUERY)
+    const enableResult = await c.env.POS_DB_GLOBAL.prepare(ENABLE_2FA_QUERY)
       .bind(authenticatedUser.id)
       .run();
 
@@ -125,7 +125,7 @@ export const enable2FA = async (c: AuthenticatedContext) => {
         lastName: userDetails.l_name,
         email: userDetails.email,
         roleName: userDetails.role_name || 'Unknown Role'
-      });
+      }, c.env);
 
       if (!emailResult.success) {
         /* Log error but don't fail the request - 2FA was already enabled successfully */

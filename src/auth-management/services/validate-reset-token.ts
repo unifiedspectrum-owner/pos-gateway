@@ -2,7 +2,6 @@
 import { Context } from "hono";
 
 /* Shared module imports */
-import { POS_DB_GLOBAL } from "@shared/constants";
 import { getCurrentISOString } from "@shared/utils";
 import { isISODateExpired } from "@shared/utils";
 
@@ -26,7 +25,7 @@ export const validateResetToken = async (c: Context<{ Bindings: Env }>) => {
     }
 
     /* Check if token exists and is valid */
-    const tokenResult = await POS_DB_GLOBAL.prepare(GET_PASSWORD_RESET_TOKEN_QUERY)
+    const tokenResult = await c.env.POS_DB_GLOBAL.prepare(GET_PASSWORD_RESET_TOKEN_QUERY)
       .bind(token) // reset token
       .first<{
         id: number;

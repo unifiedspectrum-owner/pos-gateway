@@ -1,5 +1,4 @@
 /* Shared module imports */
-import { POS_DB_GLOBAL } from "@shared/constants";
 import { JWTPayload } from "@shared/middleware";
 
 /* Auth management module imports */
@@ -18,6 +17,7 @@ export interface LoginOperationResult {
 
 /* Log successful login with statistics update and activity logging */
 export const logSuccessfulLogin = async (
+  env: Env,
   userId: number,
   sessionId: string,
   requestInfo: ClientRequestInfo,
@@ -26,7 +26,7 @@ export const logSuccessfulLogin = async (
   try {
 
     /* Check if login statistics record exists */
-    const existsResult = await POS_DB_GLOBAL.prepare(CHECK_LOGIN_STATS_EXISTS_QUERY)
+    const existsResult = await env.POS_DB_GLOBAL.prepare(CHECK_LOGIN_STATS_EXISTS_QUERY)
       .bind(userId)
       .first();
 
@@ -34,7 +34,7 @@ export const logSuccessfulLogin = async (
 
     if (!existsResult) {
       /* Insert new login statistics record */
-      statsResult = await POS_DB_GLOBAL.prepare(INSERT_LOGIN_STATS_QUERY)
+      statsResult = await env.POS_DB_GLOBAL.prepare(INSERT_LOGIN_STATS_QUERY)
         .bind(
           userId,                 // user_id
           requestInfo.ip_address, // last_login_ip
@@ -44,7 +44,7 @@ export const logSuccessfulLogin = async (
         .run();
     } else {
       /* Update existing login statistics */
-      statsResult = await POS_DB_GLOBAL.prepare(UPDATE_LOGIN_STATS_SUCCESS_QUERY)
+      statsResult = await env.POS_DB_GLOBAL.prepare(UPDATE_LOGIN_STATS_SUCCESS_QUERY)
         .bind(
           requestInfo.ip_address, // last_login_ip
           requestInfo.user_agent, // last_user_agent
@@ -55,7 +55,7 @@ export const logSuccessfulLogin = async (
     }
 
     /* Log activity */
-    const activityResult = await POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
+    const activityResult = await env.POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
       .bind(
         userId,                 // user_id for activity log
         sessionId,              // session_id for successful login
@@ -92,14 +92,15 @@ export const logSuccessfulLogin = async (
 
 /* Log failed login attempt with statistics update and activity logging */
 export const logFailedLogin = async (
+  env: Env,
   userId: number,
   requestInfo: ClientRequestInfo,
-  actionType: 'user_login' | '2fa_verification' = 'user_login'
+  actionType: 'user_login' | '2fa_verification' = 'user_login',
 ): Promise<LoginOperationResult> => {
   try {
     
     /* Check if login statistics record exists */
-    const existsResult = await POS_DB_GLOBAL.prepare(CHECK_LOGIN_STATS_EXISTS_QUERY)
+    const existsResult = await env.POS_DB_GLOBAL.prepare(CHECK_LOGIN_STATS_EXISTS_QUERY)
       .bind(userId)
       .first();
 
@@ -107,28 +108,24 @@ export const logFailedLogin = async (
 
     if (!existsResult) {
       /* Insert new login statistics record for failed first login */
-      statsResult = await POS_DB_GLOBAL.prepare(INSERT_LOGIN_STATS_FAILED_QUERY)
+      statsResult = await env.POS_DB_GLOBAL.prepare(INSERT_LOGIN_STATS_FAILED_QUERY)
         .bind(
           userId,                 // user_id
-          requestInfo.ip_address, // last_failed_login_ip
-          requestInfo.user_agent, // last_failed_user_agent
-          null                    // last_failed_device_fingerprint
+          requestInfo.ip_address // last_failed_login_ip
         )
         .run();
     } else {
       /* Update existing login statistics for failed attempt */
-      statsResult = await POS_DB_GLOBAL.prepare(UPDATE_LOGIN_STATS_FAILED_QUERY)
+      statsResult = await env.POS_DB_GLOBAL.prepare(UPDATE_LOGIN_STATS_FAILED_QUERY)
         .bind(
           requestInfo.ip_address, // last_failed_login_ip
-          requestInfo.user_agent, // last_failed_user_agent
-          null,                   // last_failed_device_fingerprint
           userId                  // user_id
         )
         .run();
     }
 
     /* Log activity */
-    const activityResult = await POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
+    const activityResult = await env.POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
       .bind(
         userId,                 // user_id for activity log
         null,                   // session_id (null for failed login)
@@ -165,15 +162,16 @@ export const logFailedLogin = async (
 
 /* Log specific activity without statistics update */
 export const logActivity = async (
+  env: Env,
   userId: string,
   sessionId: string | null,
   actionType: string,
   requestInfo: ClientRequestInfo,
   actionResult: 'success' | 'failure' = 'success',
-  performedBy: number | null = null
+  performedBy: number | null = null,
 ): Promise<{ success: boolean; error?: string }> => {
   try {
-    const result = await POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
+    const result = await env.POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
       .bind(
         userId,        // user_id for activity log
         sessionId,     // session_id (can be null)
@@ -213,9 +211,10 @@ export const createJWTPayload = (user: UserWithRole, sessionId: string): Omit<JW
 
 /* Create user session and generate tokens */
 export const createSessionAndTokens = async (
+  env: Env,
   user: UserWithRole,
   requestInfo: ClientRequestInfo,
-  rememberMe: boolean = false
+  rememberMe: boolean = false,
 ): Promise<{
   success: boolean;
   sessionId?: string;
@@ -229,7 +228,7 @@ export const createSessionAndTokens = async (
     const sessionExpiration = calculateSessionExpiration(rememberMe);
 
     /* Create user session */
-    const sessionResult = await POS_DB_GLOBAL.prepare(CREATE_SESSION_QUERY)
+    const sessionResult = await env.POS_DB_GLOBAL.prepare(CREATE_SESSION_QUERY)
       .bind(
         sessionId, // unique session identifier
         user.id, // user_id for session ownership

@@ -1,5 +1,5 @@
 /* Shared module imports */
-import { POS_DB_GLOBAL, USER_CONTEXT_KEY } from "@shared/constants";
+import { USER_CONTEXT_KEY } from "@shared/constants";
 import { getCurrentISOString } from "@shared/utils";
 import { AuthenticatedContext } from "@shared/middleware";
 
@@ -21,7 +21,7 @@ export const logout = async (c: AuthenticatedContext) => {
     const sessionId = user.session_id;
 
     /* Deactivate specific session */
-    const sessionResult = await POS_DB_GLOBAL.prepare(DEACTIVATE_SESSION_QUERY)
+    const sessionResult = await c.env.POS_DB_GLOBAL.prepare(DEACTIVATE_SESSION_QUERY)
       .bind(
         sessionId,   // session_id to deactivate
         user.id      // user_id for ownership verification
@@ -48,12 +48,12 @@ export const logout = async (c: AuthenticatedContext) => {
     /* Run decrement sessions and activity logging in parallel */
     const [decrementResult, activityResult] = await Promise.all([
       /* Decrement active sessions count */
-      POS_DB_GLOBAL.prepare(DECREMENT_ACTIVE_SESSIONS_QUERY)
+      c.env.POS_DB_GLOBAL.prepare(DECREMENT_ACTIVE_SESSIONS_QUERY)
         .bind(user.id) // user_id to decrement active sessions
         .run(),
 
       /* Log logout activity */
-      POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
+      c.env.POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
         .bind(
           user.id, // user_id for activity log
           sessionId, // session_id for logout activity

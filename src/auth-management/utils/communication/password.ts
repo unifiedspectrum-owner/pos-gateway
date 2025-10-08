@@ -1,15 +1,17 @@
 /* Shared module imports */
 import { sendGridService } from '@shared/services';
 import { getCurrentISOString } from '@shared/utils/time';
-import { FRONTEND_APP_URL, SENDGRID_EMAIL } from '@shared/constants';
-import { EmailResponse } from '@shared/types';
+import { EMAIL_QUEUE_PREFIX, FRONTEND_APP_URL, SENDGRID_EMAIL } from '@shared/constants';
+import { EmailParams, EmailResponse } from '@shared/types';
 
 /* Auth management module imports */
 import { generatePasswordResetHTML, generatePasswordResetText, generatePasswordChangedConfirmationHTML, generatePasswordChangedConfirmationText } from '@auth-management/email-templates';
 import { PasswordResetOptions, PasswordResetConfirmationOptions } from '@auth-management/types';
+import { CommunicationQueueMessage } from '@shared/types/queue';
+import { generateUniqueID } from '@shared/utils/id-generation';
 
 /* Send password reset email with reset link */
-export async function sendPasswordResetEmail(options: PasswordResetOptions): Promise<EmailResponse> {
+export async function sendPasswordResetEmail(options: PasswordResetOptions, env: Env): Promise<EmailResponse> {
   const { to, userEmail, userName, resetToken } = options;
 
   try {
@@ -17,7 +19,7 @@ export async function sendPasswordResetEmail(options: PasswordResetOptions): Pro
     const resetUrl = `${FRONTEND_APP_URL}/auth/reset-password`;
 
     /* Send password reset email with HTML and text content */
-    const result = await sendGridService.sendEmail({
+    const emailParams: EmailParams = {
       from: SENDGRID_EMAIL,
       to: to,
       subject: 'Reset Your Voice POS Password',
@@ -27,30 +29,27 @@ export async function sendPasswordResetEmail(options: PasswordResetOptions): Pro
         'X-Entity-Ref-ID': `password-reset-${Date.now()}`,
       },
       categories: ['password-reset'],
-    });
+    };
 
-    if (!result.success) {
-      console.error('[PASSWORD-EMAIL] 500: SendGrid password reset email error', {
-        error: result.error,
-        timestamp: getCurrentISOString()
-      });
-      return {
-        success: false,
-        error: result.error || 'Failed to send email',
-        timestamp: getCurrentISOString()
-      };
-    }
+    /* Prepare queue message */
+    const queueMessage: CommunicationQueueMessage = {
+      request_id: generateUniqueID(EMAIL_QUEUE_PREFIX),
+      params: emailParams
+    };
+
+    /* Send to queue */
+    env.COMMUNICATION_QUEUE.send(queueMessage);
 
     /* Log successful password reset email delivery */
     console.log('[PASSWORD-EMAIL] 200: Password reset email sent successfully', {
       to,
-      messageId: result.messageId,
+      requestId: queueMessage.request_id,
       timestamp: getCurrentISOString()
     });
 
     return {
       success: true,
-      messageId: result.messageId,
+      messageId: queueMessage.request_id,
       timestamp: getCurrentISOString()
     };
 
@@ -73,12 +72,12 @@ export async function sendPasswordResetEmail(options: PasswordResetOptions): Pro
 }
 
 /* Send password reset confirmation email after successful password change */
-export async function sendPasswordResetConfirmationEmail(options: PasswordResetConfirmationOptions): Promise<EmailResponse> {
+export async function sendPasswordResetConfirmationEmail(options: PasswordResetConfirmationOptions, env: Env): Promise<EmailResponse> {
   const { to, userName, resetTime, ipAddress } = options;
 
   try {
     /* Send password reset confirmation email with HTML and text content */
-    const result = await sendGridService.sendEmail({
+    const emailParams: EmailParams = {
       from: SENDGRID_EMAIL,
       to: to,
       subject: 'Password Successfully Reset - Voice POS',
@@ -88,30 +87,27 @@ export async function sendPasswordResetConfirmationEmail(options: PasswordResetC
         'X-Entity-Ref-ID': `password-confirmation-${Date.now()}`,
       },
       categories: ['password-confirmation', 'security-notification'],
-    });
+    };
 
-    if (!result.success) {
-      console.error('[PASSWORD-EMAIL] 500: SendGrid password confirmation email error', {
-        error: result.error,
-        timestamp: getCurrentISOString()
-      });
-      return {
-        success: false,
-        error: result.error || 'Failed to send confirmation email',
-        timestamp: getCurrentISOString()
-      };
-    }
+    /* Prepare queue message */
+    const queueMessage: CommunicationQueueMessage = {
+      request_id: generateUniqueID(EMAIL_QUEUE_PREFIX),
+      params: emailParams
+    };
+
+    /* Send to queue */
+    env.COMMUNICATION_QUEUE.send(queueMessage);
 
     /* Log successful password confirmation email delivery */
     console.log('[PASSWORD-EMAIL] 200: Password reset confirmation email sent successfully', {
       to,
-      messageId: result.messageId,
+      requestId: queueMessage.request_id,
       timestamp: getCurrentISOString()
     });
 
     return {
       success: true,
-      messageId: result.messageId,
+      messageId: queueMessage.request_id,
       timestamp: getCurrentISOString()
     };
 

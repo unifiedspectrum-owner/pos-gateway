@@ -2,7 +2,6 @@
 import { Context } from "hono";
 
 /* Shared module imports */
-import { POS_DB_GLOBAL } from "@shared/constants";
 import { validatePayload } from "@shared/utils/validation";
 import { getCurrentISOString } from "@shared/utils";
 
@@ -35,7 +34,7 @@ export const login = async (c: Context<{ Bindings: Env }>) => {
     const { email, password, remember_me } = validationResult.data;
 
     /* Get user ID by email */
-    const userIdResult = await POS_DB_GLOBAL.prepare(CHECK_USER_EMAIL_EXISTS_QUERY)
+    const userIdResult = await c.env.POS_DB_GLOBAL.prepare(CHECK_USER_EMAIL_EXISTS_QUERY)
       .bind(email.toLowerCase().trim()) // user email address for authentication
       .first<{ id: number }>();
 
@@ -50,7 +49,7 @@ export const login = async (c: Context<{ Bindings: Env }>) => {
     }
 
     /* Get full user details by ID with role information */
-    const userResult = await POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
+    const userResult = await c.env.POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
       .bind(userIdResult.id) // user_id to get full details
       .first<UserWithRole>();
 
@@ -70,7 +69,7 @@ export const login = async (c: Context<{ Bindings: Env }>) => {
     if (!isPasswordValid) {
       try {
         /* Update failed login statistics and log attempt */
-        const loginResult = await logFailedLogin(userResult.id, requestInfo, 'user_login');
+        const loginResult = await logFailedLogin(c.env, userResult.id, requestInfo, 'user_login');
 
         /* Check if login operation failed */
         if (!loginResult.success) {
@@ -93,14 +92,14 @@ export const login = async (c: Context<{ Bindings: Env }>) => {
         }
 
         /* Check if account should be locked after this failed attempt */
-        const failedAttemptsResult = await POS_DB_GLOBAL.prepare(GET_USER_FAILED_ATTEMPTS_QUERY)
+        const failedAttemptsResult = await c.env.POS_DB_GLOBAL.prepare(GET_USER_FAILED_ATTEMPTS_QUERY)
           .bind(userResult.id) // user_id to check failed attempts
           .first<{ consecutive_failed_attempts: number; last_failed_login_at: string }>();
 
         if (failedAttemptsResult && shouldLockAccount(failedAttemptsResult.consecutive_failed_attempts)) {
           /* Lock the account */
           const lockExpiration = calculateAccountLockExpiration();
-          await POS_DB_GLOBAL.prepare(LOCK_USER_ACCOUNT_QUERY)
+          await c.env.POS_DB_GLOBAL.prepare(LOCK_USER_ACCOUNT_QUERY)
             .bind(
               lockExpiration, // ISO string for account_locked_until
               userResult.id   // user_id to lock
@@ -108,7 +107,7 @@ export const login = async (c: Context<{ Bindings: Env }>) => {
             .run();
 
           /* Log account lock activity */
-          await logActivity(userResult.id.toString(), null, 'account_locked', requestInfo, 'success', null);
+          await logActivity(c.env, userResult.id.toString(), null, 'account_locked', requestInfo, 'success', null);
 
           return c.json({
             success: false,
@@ -150,7 +149,7 @@ export const login = async (c: Context<{ Bindings: Env }>) => {
     /* Check if user account is locked */
     if (isAccountLocked(userResult)) {
       /* Log failed login attempt */
-      await logActivity(userResult.id.toString(), null, 'user_login', requestInfo, 'failure', null);
+      await logActivity(c.env, userResult.id.toString(), null, 'user_login', requestInfo, 'failure', null);
 
       return c.json({
         success: false,
@@ -190,7 +189,7 @@ export const login = async (c: Context<{ Bindings: Env }>) => {
     }
 
     /* Create session and generate tokens */
-    const sessionResult = await createSessionAndTokens(userResult, requestInfo, remember_me);
+    const sessionResult = await createSessionAndTokens(c.env, userResult, requestInfo, remember_me);
 
     if (!sessionResult.success) {
       return c.json({
@@ -213,7 +212,7 @@ export const login = async (c: Context<{ Bindings: Env }>) => {
     const { sessionId, accessToken, refreshToken } = sessionResult;
 
     /* Update successful login statistics and log activity */
-    const loginResult = await logSuccessfulLogin(userResult.id, sessionId, requestInfo, 'user_login');
+    const loginResult = await logSuccessfulLogin(c.env, userResult.id, sessionId, requestInfo, 'user_login');
 
     /* Check if login operation failed */
     if (!loginResult.success) {

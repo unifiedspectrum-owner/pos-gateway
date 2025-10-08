@@ -1,6 +1,6 @@
 /* Shared module imports */
 import { getCurrentISOString } from "@shared/utils";
-import { USER_CONTEXT_KEY, POS_DB_GLOBAL } from "@shared/constants";
+import { USER_CONTEXT_KEY } from "@shared/constants";
 import type { AuthenticatedContext } from "@shared/middleware";
 
 /* Auth management module imports */
@@ -15,7 +15,7 @@ export const disable2FA = async (c: AuthenticatedContext) => {
     const authenticatedUser = c.get(USER_CONTEXT_KEY);
 
     /* Get user details and check if 2FA is currently enabled */
-    const userDetails = await POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
+    const userDetails = await c.env.POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
       .bind(authenticatedUser.id)
       .first<UserWithRole>();
 
@@ -38,7 +38,7 @@ export const disable2FA = async (c: AuthenticatedContext) => {
     }
 
     /* Disable 2FA flag in users table */
-    const disableResult = await POS_DB_GLOBAL.prepare(DISABLE_2FA_QUERY)
+    const disableResult = await c.env.POS_DB_GLOBAL.prepare(DISABLE_2FA_QUERY)
       .bind(authenticatedUser.id)
       .run();
 
@@ -59,7 +59,7 @@ export const disable2FA = async (c: AuthenticatedContext) => {
     }
 
     /* Delete 2FA configuration data */
-    const deleteResult = await POS_DB_GLOBAL.prepare(DELETE_USER_2FA_QUERY)
+    const deleteResult = await c.env.POS_DB_GLOBAL.prepare(DELETE_USER_2FA_QUERY)
       .bind(authenticatedUser.id)
       .run();
 
@@ -87,7 +87,7 @@ export const disable2FA = async (c: AuthenticatedContext) => {
         lastName: userDetails.l_name,
         email: userDetails.email,
         roleName: userDetails.role_name || 'Unknown Role'
-      });
+      }, c.env);
 
       if (!emailResult.success) {
         /* Log email error details for debugging */

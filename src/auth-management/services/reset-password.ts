@@ -2,7 +2,6 @@
 import { Context } from "hono";
 
 /* Shared module imports */
-import { POS_DB_GLOBAL } from "@shared/constants";
 import { validatePayload } from "@shared/utils/validation";
 import { isISODateExpired, getCurrentISOString } from "@shared/utils";
 
@@ -35,7 +34,7 @@ export const resetPassword = async (c: Context<{ Bindings: Env }>) => {
     const { token, new_password } = validationResult.data;
 
     /* Check if token exists and is valid */
-    const tokenResult = await POS_DB_GLOBAL.prepare(GET_PASSWORD_RESET_TOKEN_QUERY)
+    const tokenResult = await c.env.POS_DB_GLOBAL.prepare(GET_PASSWORD_RESET_TOKEN_QUERY)
       .bind(token)
       .first<{
         id: number;
@@ -80,7 +79,7 @@ export const resetPassword = async (c: Context<{ Bindings: Env }>) => {
 
     /* Update user password */
     const currentTime = getCurrentISOString();
-    const updateResult = await POS_DB_GLOBAL.prepare(UPDATE_USER_PASSWORD_QUERY)
+    const updateResult = await c.env.POS_DB_GLOBAL.prepare(UPDATE_USER_PASSWORD_QUERY)
       .bind(hashedPassword, tokenResult.user_id)
       .run();
 
@@ -102,10 +101,10 @@ export const resetPassword = async (c: Context<{ Bindings: Env }>) => {
 
     /* Mark the reset token as used and log activity in parallel */
     const [tokenUpdateResult, activityLogResult] = await Promise.all([
-      POS_DB_GLOBAL.prepare(MARK_PASSWORD_RESET_TOKEN_USED_QUERY)
+      c.env.POS_DB_GLOBAL.prepare(MARK_PASSWORD_RESET_TOKEN_USED_QUERY)
         .bind(currentTime, token)
         .run(),
-      POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
+      c.env.POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
         .bind(
           tokenResult.user_id, // user_id for activity log
           null, // session_id (null for password reset)
@@ -154,7 +153,7 @@ export const resetPassword = async (c: Context<{ Bindings: Env }>) => {
     }
 
     /* Get user details for confirmation email */
-    const userDetails = await POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
+    const userDetails = await c.env.POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
       .bind(tokenResult.user_id)
       .first<UserWithRole>();
 
@@ -166,7 +165,7 @@ export const resetPassword = async (c: Context<{ Bindings: Env }>) => {
         userName: `${userDetails.f_name} ${userDetails.l_name}`,
         resetTime,
         ipAddress: requestInfo.ip_address
-      });
+      }, c.env);
 
       if (!emailResult.success) {
         /* Log error but don't fail the request - password was already reset successfully */

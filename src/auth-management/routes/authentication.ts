@@ -23,6 +23,9 @@ authRoutes.get('/validate-reset-token', validateResetToken);
 /* POST /auth/reset-password - Change user password using reset token */
 authRoutes.post('/reset-password', resetPassword);
 
+/* POST /auth/2fa/verify - Verify 2FA token and provide authentication tokens */
+authRoutes.post('/2fa/verify', verify2FA);
+
 /* Protected authentication routes (authentication required) */
 /* Apply JWT authentication middleware to protected routes */
 authRoutes.use('*', jwtAuthMiddleware);
@@ -42,8 +45,6 @@ authRoutes.post('/2fa/enable', enable2FA);
 /* POST /auth/2fa/disable - Disable two-factor authentication */
 authRoutes.post('/2fa/disable', disable2FA);
 
-/* POST /auth/2fa/verify - Verify 2FA token and provide authentication tokens */
-authRoutes.post('/2fa/verify', verify2FA);
 
 /* Export configured authentication routes for use in main application */
 export { authRoutes };

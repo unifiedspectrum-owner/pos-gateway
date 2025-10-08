@@ -3,7 +3,7 @@ import { authenticator } from "otplib";
 
 /* Shared module imports */
 import { getCurrentISOString } from "@shared/utils";
-import { POS_DB_GLOBAL, DEFAULT_2FA_MAX_FAILED_ATTEMPTS, USER_CONTEXT_KEY } from "@shared/constants";
+import { DEFAULT_2FA_MAX_FAILED_ATTEMPTS, USER_CONTEXT_KEY } from "@shared/constants";
 import type { AuthenticatedContext } from "@shared/middleware";
 
 /* Auth management module imports */
@@ -21,7 +21,7 @@ export const generate2FA = async (c: AuthenticatedContext) => {
     const authenticatedUser = c.get(USER_CONTEXT_KEY);
 
     /* Get user details and check if 2FA is already enabled */
-    const userDetails = await POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
+    const userDetails = await c.env.POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
       .bind(authenticatedUser.id)
       .first<UserWithRole>();
 
@@ -64,7 +64,7 @@ export const generate2FA = async (c: AuthenticatedContext) => {
     );
 
     /* Check if user already has a 2FA record */
-    const existing2FARecord = await POS_DB_GLOBAL.prepare(CHECK_USER_2FA_EXISTS_QUERY)
+    const existing2FARecord = await c.env.POS_DB_GLOBAL.prepare(CHECK_USER_2FA_EXISTS_QUERY)
       .bind(authenticatedUser.id)
       .first<{id: number, is_active: number}>();
 
@@ -72,7 +72,7 @@ export const generate2FA = async (c: AuthenticatedContext) => {
 
     if (existing2FARecord) {
       /* Update existing 2FA record (pending verification) */
-      twoFactorResult = await POS_DB_GLOBAL.prepare(REACTIVATE_USER_2FA_QUERY)
+      twoFactorResult = await c.env.POS_DB_GLOBAL.prepare(REACTIVATE_USER_2FA_QUERY)
         .bind(
           twoFactorSecret, // secret
           hashedBackupCodesJson, // backup_codes (JSON string)
@@ -84,7 +84,7 @@ export const generate2FA = async (c: AuthenticatedContext) => {
         .run();
     } else {
       /* Initialize new 2FA record (pending verification) */
-      twoFactorResult = await POS_DB_GLOBAL.prepare(INITIALIZE_USER_2FA_QUERY)
+      twoFactorResult = await c.env.POS_DB_GLOBAL.prepare(INITIALIZE_USER_2FA_QUERY)
         .bind(
           authenticatedUser.id, // user_id
           twoFactorSecret, // secret (plain text for TOTP verification)

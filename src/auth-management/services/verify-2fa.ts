@@ -3,7 +3,6 @@ import { Context } from "hono";
 import { authenticator } from "otplib";
 
 /* Shared module imports */
-import { POS_DB_GLOBAL } from "@shared/constants";
 import { validatePayload } from "@shared/utils/validation";
 import { getCurrentISOString } from "@shared/utils";
 
@@ -52,7 +51,7 @@ export const verify2FA = async (c: Context<{ Bindings: Env }>) => {
     const { user_id, type, code } = validationResult.data;
 
     /* Get user information by ID */
-    const userResult = await POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
+    const userResult = await c.env.POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
       .bind(user_id) // user_id for user lookup
       .first<UserWithRole>();
 
@@ -82,7 +81,7 @@ export const verify2FA = async (c: Context<{ Bindings: Env }>) => {
     }
 
     /* Get user's 2FA secret and settings */
-    const twoFactorResult = await POS_DB_GLOBAL.prepare(GET_USER_2FA_SECRET_QUERY)
+    const twoFactorResult = await c.env.POS_DB_GLOBAL.prepare(GET_USER_2FA_SECRET_QUERY)
       .bind(user_id) // user_id for 2FA settings lookup
       .first<TwoFactorAuthData>();
 
@@ -168,7 +167,7 @@ export const verify2FA = async (c: Context<{ Bindings: Env }>) => {
           updatedBackupCodes = hashedBackupCodes.filter((_, index) => index !== validCodeIndex);
 
           /* Update backup codes immediately after verification */
-          await POS_DB_GLOBAL.prepare(UPDATE_BACKUP_CODES_QUERY)
+          await c.env.POS_DB_GLOBAL.prepare(UPDATE_BACKUP_CODES_QUERY)
             .bind(
               JSON.stringify(updatedBackupCodes), // updated backup_codes JSON
               user_id                             // user_id for backup codes update
@@ -201,7 +200,7 @@ export const verify2FA = async (c: Context<{ Bindings: Env }>) => {
       /* Update failed attempts counter */
       const newFailedAttempts = twoFactorResult.failed_attempts + 1;
 
-      await POS_DB_GLOBAL.prepare(UPDATE_2FA_FAILED_ATTEMPTS_QUERY)
+      await c.env.POS_DB_GLOBAL.prepare(UPDATE_2FA_FAILED_ATTEMPTS_QUERY)
         .bind(
           user_id      // user_id for 2FA record update
         )
@@ -211,7 +210,7 @@ export const verify2FA = async (c: Context<{ Bindings: Env }>) => {
       if (should2FABeLocked(newFailedAttempts, twoFactorResult.max_failed_attempts)) {
         const lockExpiration = calculate2FALockExpiration();
 
-        await POS_DB_GLOBAL.prepare(LOCK_2FA_AFTER_MAX_ATTEMPTS_QUERY)
+        await c.env.POS_DB_GLOBAL.prepare(LOCK_2FA_AFTER_MAX_ATTEMPTS_QUERY)
           .bind(
             lockExpiration, // locked_until ISO timestamp
             user_id         // user_id to lock
@@ -219,7 +218,7 @@ export const verify2FA = async (c: Context<{ Bindings: Env }>) => {
           .run();
 
         /* Log 2FA lock activity */
-        await logActivity(user_id, null, '2fa_locked', requestInfo, 'success', null);
+        await logActivity(c.env, user_id, null, '2fa_locked', requestInfo, 'success', null);
 
         console.log('[2FA-VERIFY] 423: 2FA locked after failed verification', {
           userId: user_id,
@@ -237,7 +236,7 @@ export const verify2FA = async (c: Context<{ Bindings: Env }>) => {
       }
 
       /* Log failed 2FA attempt */
-      await logActivity(user_id, null, '2fa_verification', requestInfo, 'failure', null);
+      await logActivity(c.env, user_id, null, '2fa_verification', requestInfo, 'failure', null);
 
       const remainingAttempts = twoFactorResult.max_failed_attempts - newFailedAttempts;
       console.log('[2FA-VERIFY] 401: Invalid 2FA token', {
@@ -255,14 +254,14 @@ export const verify2FA = async (c: Context<{ Bindings: Env }>) => {
     }
 
     /* Reset failed attempts on successful validation */
-    await POS_DB_GLOBAL.prepare(RESET_2FA_FAILED_ATTEMPTS_QUERY)
+    await c.env.POS_DB_GLOBAL.prepare(RESET_2FA_FAILED_ATTEMPTS_QUERY)
       .bind(
         user_id      // user_id for 2FA record reset
       )
       .run();
 
     /* Create session and generate tokens */
-    const sessionResult = await createSessionAndTokens(userResult, requestInfo, false); // Default session length
+    const sessionResult = await createSessionAndTokens(c.env, userResult, requestInfo, false); // Default session length
 
     if (!sessionResult.success) {
       return c.json({
@@ -285,7 +284,7 @@ export const verify2FA = async (c: Context<{ Bindings: Env }>) => {
     const { sessionId, accessToken, refreshToken } = sessionResult;
 
     /* Update successful login statistics and log activity */
-    const loginResult = await logSuccessfulLogin(userResult.id, sessionId, requestInfo, '2fa_verification');
+    const loginResult = await logSuccessfulLogin(c.env, userResult.id, sessionId, requestInfo, '2fa_verification');
 
     /* Check if login operation failed */
     if (!loginResult.success) {

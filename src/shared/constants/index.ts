@@ -1,8 +1,5 @@
 /* Shared constants module exports */
 
-/* Environment variables and Cloudflare bindings */
-export * from './env';
-
 /* Security and authentication constants */
 export * from './security';
 

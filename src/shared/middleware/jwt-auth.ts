@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { getCurrentISOString } from "@shared/utils";
 import { isJWTTokenExpired, isISODateExpired } from "@shared/utils";
 import { configService } from "@shared/services";
-import { POS_DB_GLOBAL, USER_CONTEXT_KEY } from "@shared/constants";
+import { USER_CONTEXT_KEY } from "@shared/constants";
 
 /* Auth module imports */
 import { VALIDATE_SESSION_QUERY } from "@auth-management/queries";
@@ -158,7 +158,7 @@ export const jwtAuthMiddleware = async (c: Context<{Bindings: Env; Variables: {u
     }
 
     /* Validate user existence and active status */
-    const userValidation = await checkUserExists(parseInt(decodedToken.sub));
+    const userValidation = await checkUserExists(parseInt(decodedToken.sub), c.env);
     if (!userValidation.isValid) {
       console.log('[JWT-AUTH] 401: User does not exist or is inactive', {
         userId: decodedToken.sub,
@@ -176,7 +176,7 @@ export const jwtAuthMiddleware = async (c: Context<{Bindings: Env; Variables: {u
     /* Validate session existence and status */
     if (decodedToken.session_id) {
       try {
-        const sessionResult = await POS_DB_GLOBAL.prepare(VALIDATE_SESSION_QUERY)
+        const sessionResult = await c.env.POS_DB_GLOBAL.prepare(VALIDATE_SESSION_QUERY)
           .bind(decodedToken.session_id)
           .first<{user_id: string, expires_at: string, is_active: number}>();
 

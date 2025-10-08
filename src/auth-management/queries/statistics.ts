@@ -22,7 +22,7 @@ export const INSERT_LOGIN_STATS_FAILED_QUERY = `
   INSERT INTO user_login_statistics (
     user_id, total_logins, successful_logins, failed_logins, consecutive_failed_attempts,
     last_failed_login_at, last_failed_login_ip, last_failed_user_agent,
-    last_failed_device_fingerprint, active_sessions, updated_at
+    active_sessions, updated_at
   ) VALUES (?, 1, 0, 1, 1, CURRENT_TIMESTAMP, ?, ?, ?, 0, CURRENT_TIMESTAMP);
 `;
 
@@ -49,8 +49,6 @@ export const UPDATE_LOGIN_STATS_FAILED_QUERY = `
       consecutive_failed_attempts = consecutive_failed_attempts + 1,
       last_failed_login_at = CURRENT_TIMESTAMP,
       last_failed_login_ip = ?,
-      last_failed_user_agent = ?,
-      last_failed_device_fingerprint = ?,
       updated_at = CURRENT_TIMESTAMP
   WHERE user_id = ?;
 `;

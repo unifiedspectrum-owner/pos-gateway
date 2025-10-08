@@ -16,19 +16,22 @@
 		"enabled": true
 	},
 	"preview_urls": true,
+	"dev": {
+		"port": 8787
+	},
 	"d1_databases": [
     {
       "binding": "POS_DB_GLOBAL",
       "database_name": "pos-db-global",
       "database_id": "b166c02e-9f0a-4137-8f80-2446f4317cd5",
-      "preview_database_id": "b166c02e-9f0a-4137-8f80-2446f4317cd5"
+      "preview_database_id": "b166c02e-9f0a-4137-8f80-2446f4317cd5",
     }
   ],
 	"secrets_store_secrets" : [
 		{
 			"binding" : "JWT_AUTH_SECRET",
 			"store_id" : "acefd69d51d8446f9873c88efc6a47f3",
-			"secret_name" : "JWT_AUTH_SECRET"
+			"secret_name" : "JWT_AUTH_SECRET",
 		},{
 			"binding" : "JWT_GATEWAY_SECRET",
 			"store_id" : "acefd69d51d8446f9873c88efc6a47f3",
@@ -47,6 +50,15 @@
 			"secret_name" : "SENDGRID_API_KEY"
 		}
 	],
+	
+	"queues": {
+    "producers": [
+      {
+        "binding": "COMMUNICATION_QUEUE",
+        "queue": "pos-notify",
+      }
+    ]
+  },
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
@@ -79,7 +91,7 @@
 	"services": [
 		{
 			"binding": "POS_BACKEND",
-			"service": "pos-backend"
+			"service": "pos-backend",
 		}
 	]
 }

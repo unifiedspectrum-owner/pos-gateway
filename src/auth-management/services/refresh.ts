@@ -1,5 +1,5 @@
 /* Shared module imports */
-import { POS_DB_GLOBAL, USER_CONTEXT_KEY } from "@shared/constants";
+import { USER_CONTEXT_KEY } from "@shared/constants";
 import { getCurrentISOString } from "@shared/utils";
 import type { AuthenticatedContext, JWTPayload } from "@shared/middleware";
 
@@ -14,7 +14,7 @@ export const refreshToken = async (c: AuthenticatedContext) => {
     const authenticatedUser = c.get(USER_CONTEXT_KEY);
 
     /* Update session last activity */
-    await POS_DB_GLOBAL.prepare(UPDATE_SESSION_ACTIVITY_QUERY)
+    await c.env.POS_DB_GLOBAL.prepare(UPDATE_SESSION_ACTIVITY_QUERY)
       .bind(authenticatedUser.session_id)
       .run();
 

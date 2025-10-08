@@ -1,10 +1,10 @@
 /* Libraries imports */
-import { Context, Next } from "hono";
+import { Next } from "hono";
 
 /* Shared module imports */
 import { getCurrentISOString } from "@shared/utils";
-import { POS_DB_GLOBAL, USER_CONTEXT_KEY } from "@shared/constants";
-import { AuthenticatedContext, AuthenticatedUser } from "@shared/middleware";
+import { USER_CONTEXT_KEY } from "@shared/constants";
+import { AuthenticatedContext } from "@shared/middleware";
 
 /* Auth management module imports */
 import { checkUserExists, checkRoleExists } from "@auth-management/utils";
@@ -92,8 +92,8 @@ export const permissionAuthMiddleware = async (c: AuthenticatedContext, next: Ne
 
     /* Check user and role existence in parallel for better performance */
     const [userValidation, roleValidation] = await Promise.all([
-      checkUserExists(parseInt(`${user.id}`)),
-      checkRoleExists(user.role_id)
+      checkUserExists(parseInt(`${user.id}`), c.env),
+      checkRoleExists(user.role_id, c.env)
     ]);
 
     /* Check user validation first */
@@ -139,7 +139,7 @@ export const permissionAuthMiddleware = async (c: AuthenticatedContext, next: Ne
     }
 
     /* Get user permissions from database - checks both user_permissions and role_permissions */
-    const permissionsResult = await POS_DB_GLOBAL.prepare(GET_USER_PERMISSIONS_QUERY)
+    const permissionsResult = await c.env.POS_DB_GLOBAL.prepare(GET_USER_PERMISSIONS_QUERY)
       .bind(user.role_id, user.id)
       .all<UserPermission>();
 

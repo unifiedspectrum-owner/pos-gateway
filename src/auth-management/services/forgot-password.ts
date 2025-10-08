@@ -2,7 +2,6 @@
 import { Context } from "hono";
 
 /* Shared module imports */
-import { POS_DB_GLOBAL } from "@shared/constants";
 import { validatePayload } from "@shared/utils/validation";
 import { getCurrentISOString } from "@shared/utils/time";
 import { addHoursToCurrentDate, generateUUID } from "@shared/utils";
@@ -36,7 +35,7 @@ export const forgotPassword = async (c: Context<{ Bindings: Env }>) => {
     const { email } = validationResult.data;
 
     /* Get user ID by email */
-    const userIdResult = await POS_DB_GLOBAL.prepare(CHECK_USER_EMAIL_EXISTS_QUERY)
+    const userIdResult = await c.env.POS_DB_GLOBAL.prepare(CHECK_USER_EMAIL_EXISTS_QUERY)
       .bind(email.toLowerCase().trim()) // user email address
       .first<{ id: number }>();
 
@@ -59,7 +58,7 @@ export const forgotPassword = async (c: Context<{ Bindings: Env }>) => {
     }
 
     /* Get full user details by ID */
-    const userResult = await POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
+    const userResult = await c.env.POS_DB_GLOBAL.prepare(GET_USER_BY_ID_QUERY)
       .bind(userIdResult.id) // user_id to get full details
       .first<UserWithRole>();
 
@@ -76,7 +75,7 @@ export const forgotPassword = async (c: Context<{ Bindings: Env }>) => {
     /* Check if user account is active */
     if (!userResult.is_active) {
       /* Log attempt on inactive account */
-      await POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
+      await c.env.POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
         .bind(
           userResult.id, // user_id for activity log
           null, // session_id (null for password reset)
@@ -102,7 +101,7 @@ export const forgotPassword = async (c: Context<{ Bindings: Env }>) => {
     const tokenExpiration = addHoursToCurrentDate(PASSWORD_RESET_TOKEN_EXPIRATION_HOURS);
 
     /* Store password reset token in database */
-    const tokenResult = await POS_DB_GLOBAL.prepare(CREATE_PASSWORD_RESET_TOKEN_QUERY)
+    const tokenResult = await c.env.POS_DB_GLOBAL.prepare(CREATE_PASSWORD_RESET_TOKEN_QUERY)
       .bind(
         userResult.id, // user_id for token ownership
         resetToken, // unique reset token
@@ -127,7 +126,7 @@ export const forgotPassword = async (c: Context<{ Bindings: Env }>) => {
     }
 
     /* Log successful password reset request */
-    await POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
+    await c.env.POS_DB_GLOBAL.prepare(LOG_USER_ACTIVITY_QUERY)
       .bind(
         userResult.id, // user_id for activity log
         null, // session_id (null for password reset)
@@ -146,7 +145,7 @@ export const forgotPassword = async (c: Context<{ Bindings: Env }>) => {
       userEmail: userResult.email,
       userName: `${userResult.f_name} ${userResult.l_name}`,
       resetToken: resetToken
-    });
+    }, c.env);
 
     if (!emailResult.success) {
       /* Log error details for debugging */

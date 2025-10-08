@@ -24,7 +24,7 @@ export const addMinutesToCurrentTime = (minutes: number): number => {
 /* Add hours to current timestamp and return Unix timestamp */
 export const addHoursToCurrentTime = (hours: number): number => {
   const currentTime = getCurrentUnixTimestamp();
-  // return currentTime + 60;
+  return currentTime + 60;
   return currentTime + (hours * 60 * 60);
 };
 

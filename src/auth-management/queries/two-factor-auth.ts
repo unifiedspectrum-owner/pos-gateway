@@ -61,7 +61,7 @@ export const INITIALIZE_USER_2FA_QUERY = `
     secret,
     backup_codes,
     backup_codes_generated_at,
-    max_failed_attempts,
+    max_failed_attempts
   ) VALUES (?, ?, ?, ?, ?);
 `;
 

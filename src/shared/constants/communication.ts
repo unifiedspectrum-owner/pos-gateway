@@ -7,3 +7,6 @@ export const SENDGRID_EMAIL = 'subscription@unifiedspectrum.com';
 
 /* Testing Email */
 export const TESTING_TO_EMAIL = 'duraimmc72@gmail.com';
+
+/* Email Queue Configuration */
+export const EMAIL_QUEUE_PREFIX = 'email';

@@ -18,6 +18,7 @@ import { csrfRoutes, posWorkerRoutes } from "@shared/routes";
 /* Auth management module imports */
 import { authRoutes } from "@auth-management/routes";
 import { extractRequestInfo } from "@auth-management/utils";
+import { CommunicationQueueHandler } from "@shared/queues";
 
 /* Initialize Hono application with Cloudflare Workers environment bindings */
 const app = new Hono<{ Bindings: Env }>();
@@ -31,7 +32,7 @@ app.use('*', requestId());  // Add unique X-Request-ID header for request tracin
 app.use('*', logger());     // Log requests with method, path, status code, and response time
 
 /* 3. Detailed Request Logging - Log all incoming request details */
-app.use('*', requestLogger);  // Log detailed request information for debugging and monitoring
+// app.use('*', requestLogger);  // Log detailed request information for debugging and monitoring
 
 /* 4. Performance Timing - Early to measure everything */
 app.use('*', timing());     // Add Server-Timing header to measure request performance
@@ -93,7 +94,7 @@ app.use("*", async (c, next) => {
 });
 
 /* 8. Security Middleware - Validate requests for SQL injection, XSS, path traversal, and malicious headers */
-app.use('*', securityMiddleware);
+// app.use('*', securityMiddleware);
 
 /* 9. CORS - Must be BEFORE CSRF for preflight OPTIONS requests to work */
 app.use("*", cors({
@@ -154,4 +155,26 @@ v1Route.route('/', posWorkerRoutes);
 app.onError(errorHandler);      // Global error handler for all thrown errors
 app.notFound(notFoundHandler);  // 404 handler for undefined routes
 
-export default app;
+export default {
+  fetch: app.fetch,
+  queue: async (batch: MessageBatch<any>, env: Env, ctx: ExecutionContext) => {
+    const queueName = batch.queue;
+
+    try {
+      switch (queueName) {
+        case 'pos-notify':
+          return await CommunicationQueueHandler.queue(batch, env, ctx);
+        default:
+          console.error('Unknown queue name:', { queueName, timestamp: new Date().toISOString() });
+          throw new Error(`Unsupported queue: ${queueName}`);
+      }
+    } catch (error) {
+      console.error('Queue processing error:', {
+        queueName,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      });
+      throw error;
+    }
+  }
+};

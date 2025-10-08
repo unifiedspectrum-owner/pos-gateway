@@ -240,6 +240,7 @@ CREATE TABLE IF NOT EXISTS user_login_statistics (
 
   /* Last Login Context */
   last_login_ip TEXT, /* IP address of last login */
+  last_failed_login_ip TEXT, /* IP address of last failed login */
   last_user_agent TEXT, /* User agent of last login */
   last_device_fingerprint TEXT, /* Device fingerprint of last login */
 

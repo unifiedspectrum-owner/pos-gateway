@@ -1,12 +1,12 @@
 /* Shared module imports */
-import { POS_BACKEND, USER_CONTEXT_KEY } from "@shared/constants";
+import { USER_CONTEXT_KEY } from "@shared/constants";
 import { generateGatewayToken, getCurrentISOString } from "@shared/utils";
 import { AuthenticatedContext } from "@shared/middleware";
 
 /* Forward request to POS worker using service binding */
 export const forwardToPOSWorker = async (c: AuthenticatedContext) => {
   try {
-    if (!POS_BACKEND) {
+    if (!c.env.POS_BACKEND) {
       console.error("[POS-WORKER] 503: POS_BACKEND service binding not configured", {
         timestamp: getCurrentISOString()
       });
@@ -52,7 +52,7 @@ export const forwardToPOSWorker = async (c: AuthenticatedContext) => {
     });
 
     /* Forward authenticated request to POS Backend worker via service binding */
-    return await POS_BACKEND.fetch(request);
+    return await c.env.POS_BACKEND.fetch(request);
 
   } catch (error) {
     /* Log error details for debugging */

@@ -1,7 +1,6 @@
 /* Shared module imports */
 import { getCurrentISOString } from '@shared/utils/time';
 import { isISODateExpired } from '@shared/utils';
-import { POS_DB_GLOBAL } from '@shared/constants';
 import { ValidationResult } from '@shared/types';
 
 /* Auth management module imports */
@@ -9,9 +8,9 @@ import { CHECK_USER_EMAIL_EXISTS_QUERY, CHECK_USER_EXISTS_QUERY, GET_ROLE_BY_ID_
 import { VALIDATE_SESSION_QUERY } from '@auth-management/queries/sessions';
 
 /* Check if user exists with given email */
-export const checkUserExistsByEmail = async (email: string): Promise<ValidationResult> => {
+export const checkUserExistsByEmail = async (email: string, env: Env): Promise<ValidationResult> => {
   try {
-    const userResult = await POS_DB_GLOBAL.prepare(CHECK_USER_EMAIL_EXISTS_QUERY)
+    const userResult = await env.POS_DB_GLOBAL.prepare(CHECK_USER_EMAIL_EXISTS_QUERY)
       .bind(email.toLowerCase().trim())
       .first();
 
@@ -42,9 +41,9 @@ export const checkUserExistsByEmail = async (email: string): Promise<ValidationR
 };
 
 /* Check if session exists and is active for user */
-export const checkSessionExists = async (sessionId: string, userId: string): Promise<ValidationResult> => {
+export const checkSessionExists = async (sessionId: string, userId: string, env: Env): Promise<ValidationResult> => {
   try {
-    const sessionResult = await POS_DB_GLOBAL.prepare(VALIDATE_SESSION_QUERY)
+    const sessionResult = await env.POS_DB_GLOBAL.prepare(VALIDATE_SESSION_QUERY)
       .bind(sessionId) // session_id for validation
       .first<{ user_id: number; expires_at: string; is_active: number }>();
 
@@ -100,10 +99,10 @@ export const checkSessionExists = async (sessionId: string, userId: string): Pro
 };
 
 /* Check if user ID exists in users table */
-export const checkUserExists = async (userId: number): Promise<ValidationResult> => {
+export const checkUserExists = async (userId: number, env: Env): Promise<ValidationResult> => {
   try {
     /* Query database to verify user existence */
-    const userVerification = await POS_DB_GLOBAL.prepare(CHECK_USER_EXISTS_QUERY)
+    const userVerification = await env.POS_DB_GLOBAL.prepare(CHECK_USER_EXISTS_QUERY)
       .bind(userId)
       .first();
 
@@ -134,9 +133,9 @@ export const checkUserExists = async (userId: number): Promise<ValidationResult>
 };
 
 /* Check if role exists and is active */
-export const checkRoleExists = async (roleId: number): Promise<ValidationResult> => {
+export const checkRoleExists = async (roleId: number, env: Env): Promise<ValidationResult> => {
   try {
-    const role = await POS_DB_GLOBAL.prepare(GET_ROLE_BY_ID_QUERY)
+    const role = await env.POS_DB_GLOBAL.prepare(GET_ROLE_BY_ID_QUERY)
       .bind(roleId)
       .first<{id: number}>();
 

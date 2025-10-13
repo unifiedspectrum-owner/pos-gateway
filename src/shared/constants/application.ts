@@ -12,5 +12,8 @@ export const POS_API_BASE_URL = 'http://127.0.0.1:8787';
 /* Cache Configuration */
 export const CONFIG_CACHE_TTL = 24 * 60 * 60 * 1000; /* 1 day cache duration */
 
+/* Request Body Size Limits */
+export const MAX_REQUEST_BODY_SIZE_MB = 10; /* 10MB max request body size */
+
 /* Context variable keys */
 export const USER_CONTEXT_KEY = 'user';

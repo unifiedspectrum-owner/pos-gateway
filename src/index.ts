@@ -11,14 +11,13 @@ import { csrf } from "hono/csrf";
 import { compress } from "hono/compress";
 
 /* Shared module imports */
-import { ALLOWED_ORIGINS } from "@shared/constants";
+import { ALLOWED_ORIGINS, MAX_REQUEST_BODY_SIZE_MB } from "@shared/constants";
 import { errorHandler, jwtAuthMiddleware, permissionAuthMiddleware, notFoundHandler, requestLogger, securityMiddleware } from "@shared/middleware";
 import { csrfRoutes, posWorkerRoutes } from "@shared/routes";
 
 /* Auth management module imports */
 import { authRoutes } from "@auth-management/routes";
 import { extractRequestInfo } from "@auth-management/utils";
-import { CommunicationQueueHandler } from "@shared/queues";
 
 /* Initialize Hono application with Cloudflare Workers environment bindings */
 const app = new Hono<{ Bindings: Env }>();
@@ -39,12 +38,19 @@ app.use('*', timing());     // Add Server-Timing header to measure request perfo
 
 /* 5. Body Size Limit - BEFORE body parsing to prevent DoS attacks early */
 app.use('*', bodyLimit({
-  maxSize: 100 * 1024,  // 100KB max request body size
+  maxSize: MAX_REQUEST_BODY_SIZE_MB * 1024 * 1024,  // 10MB max request body size
   onError: (c) => {
+    /* Add CORS headers to error response */
+    const origin = c.req.header('origin');
+    if (origin && ALLOWED_ORIGINS.includes(origin)) {
+      c.header('Access-Control-Allow-Origin', origin);
+      c.header('Access-Control-Allow-Credentials', 'true');
+    }
+
     return c.json({
       success: false,
       message: 'PAYLOAD_TOO_LARGE',
-      error: 'Request body too large. Maximum size is 100KB.',
+      error: `Request body too large. Maximum size is ${MAX_REQUEST_BODY_SIZE_MB}MB.`,
       timestamp: new Date().toISOString(),
     }, 413);
   }
@@ -89,6 +95,21 @@ app.use("*", async (c, next) => {
     limit: 100,                                        // Maximum requests allowed per IP in the time window
     standardHeaders: "draft-7",                        // Send RateLimit-* headers following IETF draft-7 spec
     keyGenerator: (c) => extractRequestInfo(c).ip_address,  // Extract client IP for rate limit tracking
+    handler: (c) => {
+      /* Add CORS headers to rate limit error response */
+      const origin = c.req.header('origin');
+      if (origin && ALLOWED_ORIGINS.includes(origin)) {
+        c.header('Access-Control-Allow-Origin', origin);
+        c.header('Access-Control-Allow-Credentials', 'true');
+      }
+
+      return c.json({
+        success: false,
+        message: 'RATE_LIMIT_EXCEEDED',
+        error: 'Too many requests. Please try again later.',
+        timestamp: new Date().toISOString(),
+      }, 429);
+    }
   });
   return limiter(c, next);
 });
@@ -157,24 +178,24 @@ app.notFound(notFoundHandler);  // 404 handler for undefined routes
 
 export default {
   fetch: app.fetch,
-  queue: async (batch: MessageBatch<any>, env: Env, ctx: ExecutionContext) => {
-    const queueName = batch.queue;
+  // queue: async (batch: MessageBatch<any>, env: Env, ctx: ExecutionContext) => {
+  //   const queueName = batch.queue;
 
-    try {
-      switch (queueName) {
-        case 'pos-notify':
-          return await CommunicationQueueHandler.queue(batch, env, ctx);
-        default:
-          console.error('Unknown queue name:', { queueName, timestamp: new Date().toISOString() });
-          throw new Error(`Unsupported queue: ${queueName}`);
-      }
-    } catch (error) {
-      console.error('Queue processing error:', {
-        queueName,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      });
-      throw error;
-    }
-  }
+  //   try {
+  //     switch (queueName) {
+  //       case 'pos-notify':
+  //         return await CommunicationQueueHandler.queue(batch, env, ctx);
+  //       default:
+  //         console.error('Unknown queue name:', { queueName, timestamp: new Date().toISOString() });
+  //         throw new Error(`Unsupported queue: ${queueName}`);
+  //     }
+  //   } catch (error) {
+  //     console.error('Queue processing error:', {
+  //       queueName,
+  //       error: error instanceof Error ? error.message : 'Unknown error',
+  //       timestamp: new Date().toISOString()
+  //     });
+  //     throw error;
+  //   }
+  // }
 };

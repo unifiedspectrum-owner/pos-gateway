@@ -10,7 +10,6 @@
 		"setup:remote": "node ./scripts/run-commands.js --module users --remote"
 	},
 	"dependencies": {
-		"@ast-grep/napi-linux-x64-gnu": "^0.39.6",
 		"@sendgrid/mail": "^8.1.6",
 		"bcryptjs": "^3.0.2",
 		"hono": "^4.9.10",
@@ -28,6 +27,6 @@
 		"@types/jsonwebtoken": "^9.0.10",
 		"@types/node": "^24.7.0",
 		"@types/qrcode": "^1.5.5",
-		"wrangler": "^4.42.0"
+		"wrangler": "^4.42.1"
 	}
 }
